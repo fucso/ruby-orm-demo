@@ -5,35 +5,79 @@ CREATE TABLE plans (
   code VARCHAR(255)
 );
 
-CREATE TABLE prices (
+CREATE TABLE demand_charges (
   id SERIAL PRIMARY KEY,
   plan_id INTEGER REFERENCES plans(id),
-  ampere INTEGER,
+  ampere_from INTEGER,
+  ampere_to INTEGER,
   charge INTEGER
 );
 
+CREATE TABLE energy_charges (
+  id SERIAL PRIMARY KEY,
+  plan_id INTEGER REFERENCES plans(id),
+  kwh_from INTEGER,
+  kwh_to INTEGER,
+  rate INTEGER
+);
+
 -- plansにデータを投入
-INSERT INTO plans (name, code) VALUES
-('プランA', 'CODE001'),
-('プランB', 'CODE002'),
-('プランC', 'CODE003'),
-('プランD', 'CODE004'),
-('プランE', 'CODE005');
+DO
+$$
+DECLARE
+    i INT := 0;
+    plan_name VARCHAR(255);
+    plan_code VARCHAR(255);
+BEGIN
+    FOR i IN 1..100 LOOP
+        plan_name := 'プラン' || CHR(64 + i);
+        plan_code := 'plan' || i;
+        INSERT INTO plans (name, code) VALUES (plan_name, plan_code);
+    END LOOP;
+END;
+$$;
 
--- plansテーブルの各プランに対して価格データを投入する
--- PLAN CODE001 ~ CODE003 の場合、10 ~ 60 までのampereを投入
-WITH ampere_values AS (SELECT generate_series(10, 60, 10) AS ampere),
-     plan_ids AS (SELECT id FROM plans WHERE code IN ('CODE001', 'CODE002', 'CODE003'))
-INSERT INTO prices (plan_id, ampere, charge)
-SELECT plan_ids.id, ampere_values.ampere, ampere_values.ampere * 100
-FROM plan_ids, ampere_values;
+-- demand_charges
+-- code = plan1 ~ plan20
+INSERT INTO demand_charges (plan_id, ampere_from, ampere_to, charge)
+SELECT id, amp, amp, amp * 10
+FROM plans, (VALUES (10), (20), (30), (40), (50), (60)) AS amperages(amp)
+WHERE code LIKE 'plan%' AND CAST(SUBSTRING(code, 5) AS INTEGER) BETWEEN 1 AND 20;
 
--- PLAN CODE004 の場合、30 ~ 60 までのampereを投入
-INSERT INTO prices (plan_id, ampere, charge)
-SELECT id, generate_series(30, 60, 10) AS ampere, generate_series(30, 60, 10) * 100
-FROM plans WHERE code = 'CODE004';
+-- code = plan21 ~ plan40
+INSERT INTO demand_charges (plan_id, ampere_from, ampere_to, charge)
+SELECT id, 10, 10, 100
+FROM plans
+WHERE code LIKE 'plan%' AND CAST(SUBSTRING(code, 5) AS INTEGER) BETWEEN 21 AND 40;
 
--- PLAN CODE005 の場合、ampereは60のみ
-INSERT INTO prices (plan_id, ampere, charge)
-SELECT id, 60 AS ampere, 60 * 100
-FROM plans WHERE code = 'CODE005';
+-- code = plan41 ~ plan60
+INSERT INTO demand_charges (plan_id, ampere_from, ampere_to, charge)
+SELECT id, amp, amp, amp * 10
+FROM plans, (VALUES (10), (20), (30)) AS amperages(amp)
+WHERE code LIKE 'plan%' AND CAST(SUBSTRING(code, 5) AS INTEGER) BETWEEN 41 AND 60;
+
+-- code = plan61 ~ plan80
+INSERT INTO demand_charges (plan_id, ampere_from, ampere_to, charge)
+SELECT id, amp, amp, amp * 10
+FROM plans, (VALUES (40), (50), (60)) AS amperages(amp)
+WHERE code LIKE 'plan%' AND CAST(SUBSTRING(code, 5) AS INTEGER) BETWEEN 61 AND 80;
+
+-- code = plan81 ~ plan100
+INSERT INTO demand_charges (plan_id, ampere_from, ampere_to, charge)
+SELECT id, amp, amp, amp * 10
+FROM plans, (VALUES (10), (20), (30), (40), (50), (60)) AS amperages(amp)
+WHERE code LIKE 'plan%' AND CAST(SUBSTRING(code, 5) AS INTEGER) BETWEEN 81 AND 100;
+
+-- code = plan81 ~ plan100 with special condition
+INSERT INTO demand_charges (plan_id, ampere_from, ampere_to, charge)
+SELECT id, 60, 490, 1000
+FROM plans
+WHERE code LIKE 'plan%' AND CAST(SUBSTRING(code, 5) AS INTEGER) BETWEEN 81 AND 100;
+
+-- energy_charges
+INSERT INTO energy_charges (plan_id, kwh_from, kwh_to, rate)
+SELECT id, 0, 120, 10 FROM plans
+UNION ALL
+SELECT id, 120, 300, 20 FROM plans
+UNION ALL 
+SELECT id, 300, NULL, 30 FROM plans;
