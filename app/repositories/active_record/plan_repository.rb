@@ -29,6 +29,7 @@ module Repository
         def find_by_capacity(capacity)
           plans = Repository::ActiveRecord::Model::Plan.joins(:demand_charges)
                 .where('demand_charges.ampere_from <= ? AND demand_charges.ampere_to >= ?', capacity, capacity)
+          plans = Repository::ActiveRecord::Model::Plan.includes(:demand_charges, :energy_charges).where(id: plans.map(&:id))
           plans.map { |plan| to_model(plan) }
         end
 
